@@ -4,16 +4,11 @@
     "slug": "algoritmo-acv",
     "version": "1.0.0",
     "orientation": "portrait",
-
-    "icon": "./assets/icon.png",
-
-    "assetBundlePatterns": ["assets/*"],
-
+    "assetBundlePatterns": [],
     "ios": { "supportsTablet": true },
     "android": { "versionCode": 1 },
-
     "web": {
-      "favicon": "./assets/favicon.png"
+      "output": "static"
     }
   }
 }
