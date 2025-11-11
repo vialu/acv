@@ -27,7 +27,7 @@ jobs:
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # app.json mínimo sin imágenes (evita pipeline Jimp/CRC)
+      # app.json mínimo, sin imágenes (corta errores de PNG/Jimp)
       - name: Override app.json (minimal, no images)
         run: |
           cat > app.json <<'JSON'
@@ -40,12 +40,12 @@ jobs:
               "assetBundlePatterns": [],
               "ios": { "supportsTablet": true },
               "android": { "versionCode": 1 },
-              "web": {}
+              "web": { "output": "static" }
             }
           }
           JSON
 
-      # Borra cualquier PNG (corta la causa del CRC)
+      # Por si quedó algún PNG corrupto
       - name: Remove ALL PNGs
         run: |
           find . -type f \( -iname "*.png" -o -iname "*.apng" \) -print -delete || true
@@ -53,15 +53,28 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Instala expo-router para evitar el error de render SSR en export
+      # Evita error de expo-router en export web (aunque no lo uses)
       - name: Ensure expo-router is present
         run: npm install expo-router@^3 --no-audit --no-fund --legacy-peer-deps
 
       - name: Export Expo Web (to dist/)
         run: npx expo export --platform web
 
-      - name: Add SPA helpers (404.html and .nojekyll)
+      # ***** PARCHE CLAVE PARA GITHUB PAGES *****
+      # 1) Inserta <base href="./"> en <head> para rutas relativas
+      # 2) Ajusta manifest.json: start_url y scope a "./"
+      # 3) 404.html y .nojekyll para SPA en Pages
+      - name: Patch for relative paths + SPA
         run: |
+          set -e
+          if [ -f dist/index.html ]; then
+            sed -i '0,/<head>/s//<head><base href=".\/">/' dist/index.html || true
+          fi
+          if [ -f dist/manifest.json ]; then
+            # Reemplazos simples; si no existen, no fallar
+            sed -i 's#"start_url":[[:space:]]*"/"#"start_url": "./"#' dist/manifest.json || true
+            sed -i 's#"scope":[[:space:]]*"/"#"scope": "./"#' dist/manifest.json || true
+          fi
           echo '<!doctype html><meta http-equiv="refresh" content="0;url=./index.html">' > dist/404.html
           touch dist/.nojekyll
           echo "Built files:" && ls -la dist
