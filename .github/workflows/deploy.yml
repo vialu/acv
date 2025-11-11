@@ -1,21 +1,24 @@
-name: Deploy Expo Web to GitHub Pages
-on:
-  push:
-    branches: ["main"]
-  workflow_dispatch:
-permissions: { contents: write }
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: 20
       - name: Strip UTF-8 BOM (Windows-saved JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
+      - name: Ensure valid PNG assets (1x1 placeholders)
+        run: |
+          mkdir -p assets
+          PNG_BASE64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axhZxkAAAAASUVORK5CYII="
+          echo "$PNG_BASE64" | base64 -d > assets/icon.png
+          echo "$PNG_BASE64" | base64 -d > assets/splash.png
+          echo "$PNG_BASE64" | base64 -d > assets/adaptive-icon.png
+          echo "$PNG_BASE64" | base64 -d > assets/favicon.png
       - name: Install dependencies
         run: npm install
       - name: Build Expo Web export
