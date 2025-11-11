@@ -1,32 +1,25 @@
 name: Deploy Expo Web to GitHub Pages
-
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
-
-permissions:
-  contents: write
-
+permissions: { contents: write }
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Strip UTF-8 BOM (Windows-saved JSONs)
+        run: |
+          sed -i '1s/^\xEF\xBB\xBF//' package.json || true
+          sed -i '1s/^\xEF\xBB\xBF//' app.json || true
+          sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
       - name: Install dependencies
         run: npm install
-
       - name: Build Expo Web export
         run: npx expo export --platform web
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
