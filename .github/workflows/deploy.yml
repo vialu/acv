@@ -20,14 +20,12 @@ jobs:
         with:
           node-version: 20
 
-      # Quita BOM de JSON guardados en Windows (evita 'Unexpected token' en package/app.json)
       - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # Crea PNGs válidos 1x1 (reemplaza placeholders corruptos y evita errores de Jimp/CRC)
       - name: Create valid PNG assets via Node
         run: |
           node - <<'NODE'
@@ -36,7 +34,7 @@ jobs:
           const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axhZxkAAAAASUVORK5CYII=';
           const buf = Buffer.from(pngB64, 'base64');
           fs.mkdirSync('assets', { recursive: true });
-          ['icon.png','splash.png','adaptive-icon.png','favicon.png'].forEach(n => {
+          ['icon.png','favicon.png'].forEach(n => {
             fs.writeFileSync(path.join('assets', n), buf);
           });
           NODE
