@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Algoritmo ACV</title>
+  <style>
+    :root { --bg:#0b1220; --card:#121a2b; --text:#e9eefb; --muted:#9fb0d8; --accent:#4da3ff; }
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";}
+    .wrap{max-width:860px;margin:0 auto;padding:24px;}
+    .header{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+    .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#4da3ff,#7ee7ff);}
+    h1{font-size:22px;margin:0}
+    .card{background:var(--card);border:1px solid #1c2741;border-radius:14px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+    .title{font-size:18px;margin:0 0 8px}
+    .body{color:var(--muted);margin:0 0 16px;white-space:pre-line}
+    .options{display:grid;gap:10px;margin-top:6px}
+    .btn{padding:12px 14px;border-radius:12px;border:1px solid #263354;background:#0f182b;color:var(--text);cursor:pointer;font-weight:600;text-align:left}
+    .btn:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,163,255,.15)}
+    .footer{display:flex;gap:8px;margin-top:18px}
+    .chip{font-size:12px;color:#c9d7ff;background:#0f182b;border:1px solid #263354;border-radius:999px;padding:6px 10px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .link{color:var(--accent);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="header">
+        <div class="logo"></div>
+        <h1>Algoritmo ACV</h1>
+      </div>
+      <div>
+        <a id="reset" class="link" href="#">Reiniciar</a>
+      </div>
+    </div>
+
+    <div id="card" class="card" hidden>
+      <h2 class="title" id="nodeTitle"></h2>
+      <p class="body" id="nodeBody"></p>
+      <div id="options" class="options"></div>
+      <div id="footer" class="footer"></div>
+    </div>
+  </div>
+
+<script>
+/**
+ * === Cómo cargar tu árbol ===
+ * 1) Copia de tu App.js el objeto de nodos (diccionario) y pega dentro de TREE.
+ * 2) Asegúrate de indicar el id de partida en START_ID.
+ *
+ * Formato por nodo:
+ * {
+ *   id: 'identificador-unico',
+ *   title: 'Título mostrado',
+ *   body: 'Texto (puede tener \n saltos de línea)',
+ *   options: [ { label: 'Sí', nextId: 'otro-id' }, { label: 'No', nextId: 'fin-no-aplica' } ]
+ *   // O si es final:
+ *   result: 'Recomendación final / conclusión'
+ * }
+ *
+ * Importante: las claves del diccionario deben ser strings idénticas al campo id.
+ */
+
+const TREE = {
+  // ====== EJEMPLO (borra esto y pega tus nodos) ======
+  "inicio": {
+    id: "inicio",
+    title: "¿Paciente con sospecha de ACV isquémico?",
+    body: "Evaluar tiempo de inicio, NIHSS, glicemia, presión y contraindicaciones.",
+    options: [
+      { label: "Sí", nextId: "tiempo-desde-inicio" },
+      { label: "No", nextId: "fin-no-aplica" }
+    ]
+  },
+
+  "tiempo-desde-inicio": {
+    id: "tiempo-desde-inicio",
+    title: "¿< 24 horas desde el inicio (o despertar con ACV)?",
+    body: "Si > 24h, no es candidato a reperfusión. Considerar manejo médico general.",
+    options: [
+      { label: "Sí", nextId: "criterios-reperfusion" },
+      { label: "No", nextId: "fin-no-aplica" }
+    ]
+  },
+
+  "criterios-reperfusion": {
+    id: "criterios-reperfusion",
+    title: "Criterios de reperfusión",
+    body: "1) Trombolisis EV si dentro de ventana y sin contraindicaciones.\n2) Trombectomía si LVO y ASPECTS adecuado.",
+    options: [
+      { label: "Candidato", nextId: "final-reperfusion" },
+      { label: "No candidato", nextId: "fin-no-aplica" }
+    ]
+  },
+
+  "final-reperfusion": {
+    id: "final-reperfusion",
+    title: "Reperfusión",
+    result: "Trombectomía mecánica si LVO y ASPECTS > 3. Trombolisis EV además si síntomas ≤ 9 h y sin CI."
+  },
+
+  "fin-no-aplica": {
+    id: "fin-no-aplica",
+    title: "No es candidato a reperfusión",
+    result: "Manejo médico general, prevención secundaria y rehabilitación temprana."
+  }
+  // ====== FIN EJEMPLO ======
+};
+
+// <-- Cambia esto por el id real con el que quieres iniciar -->
+const START_ID = "inicio";
+
+// ========== Motor mínimo del árbol ==========
+
+const state = {
+  currentId: null,
+  history: []
+};
+
+const byId = id => TREE[id];
+
+function isFinal(node){
+  return !!node.result;
+}
+
+function go(id, pushHistory=true){
+  const node = byId(id);
+  if(!node){ renderError("Nodo no encontrado: " + id); return; }
+
+  if(pushHistory && state.currentId) state.history.push(state.currentId);
+  state.currentId = id;
+
+  render(node);
+  // URL amigable: permite compartir el paso actual
+  location.hash = encodeURIComponent(id);
+}
+
+function back(){
+  const prev = state.history.pop();
+  if(prev){ go(prev, false); }
+}
+
+function renderError(msg){
+  const card = document.getElementById('card');
+  card.hidden = false;
+  document.getElementById('nodeTitle').textContent = "Error";
+  document.getElementById('nodeBody').textContent = msg;
+  document.getElementById('options').innerHTML = "";
+  document.getElementById('footer').innerHTML = "";
+}
+
+function render(node){
+  const card = document.getElementById('card');
+  card.hidden = false;
+
+  const t = document.getElementById('nodeTitle');
+  const b = document.getElementById('nodeBody');
+  const opts = document.getElementById('options');
+  const foot = document.getElementById('footer');
+
+  t.textContent = node.title || node.id;
+  b.textContent = node.body || "";
+
+  opts.innerHTML = "";
+  foot.innerHTML = "";
+
+  if(isFinal(node)){
+    // Vista final
+    b.textContent = node.result;
+    const again = document.createElement('button');
+    again.className = 'btn';
+    again.textContent = 'Volver al inicio';
+    again.onclick = () => { state.history = []; go(START_ID, false); };
+    opts.appendChild(again);
+
+  } else {
+    // Botones de opciones
+    (node.options || []).forEach(o=>{
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = o.label;
+      btn.onclick = () => go(o.nextId);
+      opts.appendChild(btn);
+    });
+
+    // Pie: id y botón atrás
+    const idChip = document.createElement('div');
+    idChip.className = 'chip';
+    idChip.textContent = `id: ${node.id}`;
+    foot.appendChild(idChip);
+
+    if(state.history.length){
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn';
+      backBtn.style.padding = '8px 10px';
+      backBtn.textContent = '← Atrás';
+      backBtn.onclick = back;
+      foot.appendChild(backBtn);
+    }
+  }
+}
+
+// Soporte para URLs compartibles: https://.../index.html#id-del-nodo
+window.addEventListener('hashchange', ()=>{
+  const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+  if(h && TREE[h]){ state.history = []; go(h, false); }
+});
+
+document.getElementById('reset').addEventListener('click', e=>{
+  e.preventDefault();
+  state.history = [];
+  location.hash = '';
+  go(START_ID, false);
+});
+
+// Arranque
+(() => {
+  const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+  if(h && TREE[h]) go(h, false);
+  else go(START_ID, false);
+})();
+</script>
+</body>
+</html>
