@@ -11,6 +11,11 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # 🔑 Forzamos a Expo a NO usar router ni static rendering
+    env:
+      EXPO_NO_ROUTER: "1"
+      EXPO_USE_STATIC: "0"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +32,7 @@ jobs:
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # app.json mínimo sin imágenes (corta errores de PNG/Jimp)
+      # app.json mínimo y sin imágenes (evita Jimp/CRC)
       - name: Override app.json (minimal, no images)
         run: |
           cat > app.json <<'JSON'
@@ -45,7 +50,7 @@ jobs:
           }
           JSON
 
-      # Por si quedó algún PNG corrupto
+      # Por si quedó algún PNG corrupto en el repo
       - name: Remove ALL PNGs
         run: |
           find . -type f \( -iname "*.png" -o -iname "*.apng" \) -print -delete || true
@@ -53,16 +58,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Instalar expo-router + deps requeridas para export (safe-area, screens, navigation)
-      - name: Ensure expo-router and web deps
+      # 🔥 Asegura que NO haya router instalado (lo desinstalamos si está)
+      - name: Remove expo-router if present
         run: |
-          npm install \
-            expo-router@^3 \
-            react-native-safe-area-context@^4 \
-            react-native-screens@^3 \
-            @react-navigation/native@^6 \
-            --no-audit --no-fund --legacy-peer-deps
+          if npm ls expo-router >/dev/null 2>&1; then
+            npm remove expo-router --no-audit --no-fund || true
+          fi
 
+      # Export web (sin router/SSR gracias a las env de arriba)
       - name: Export Expo Web (to dist/)
         run: npx expo export --platform web
 
