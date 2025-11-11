@@ -1,25 +1,19 @@
-﻿{
+{
   "expo": {
-    "name": "ACV Decision Tree",
-    "slug": "acv-decision-tree",
+    "name": "Algoritmo ACV",
+    "slug": "algoritmo-acv",
     "version": "1.0.0",
     "orientation": "portrait",
+
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "assetBundlePatterns": ["**/*"],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "cl.inmov.acv" },
-    "android": {
-      "package": "cl.inmov.acv",
-      "versionCode": 1,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
-      }
-    },
-    "web": { "favicon": "./assets/favicon.png" }
+
+    "assetBundlePatterns": ["assets/*"],
+
+    "ios": { "supportsTablet": true },
+    "android": { "versionCode": 1 },
+
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
   }
 }
