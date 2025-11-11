@@ -38,6 +38,20 @@ jobs:
           echo "$PNG_BASE64" | base64 -d > assets/favicon.png
 
       - name: Install dependencies
+            - name: Create valid PNG assets via Node
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          // PNG 1x1 transparente válido
+          const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axhZxkAAAAASUVORK5CYII=';
+          const buf = Buffer.from(pngB64, 'base64');
+          fs.mkdirSync('assets', { recursive: true });
+          ['icon.png','splash.png','adaptive-icon.png','favicon.png'].forEach(n => {
+            fs.writeFileSync(path.join('assets', n), buf);
+          });
+          NODE
+
         run: npm install
 
       - name: Export Expo Web (to dist/)
