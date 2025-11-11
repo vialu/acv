@@ -1,16 +1,33 @@
+name: Deploy Expo Web to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Strip UTF-8 BOM (Windows-saved JSONs)
+
+      # (Opcional, pero recomendable) quita BOM de JSON guardados en Windows
+      - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
+
+      # Placeholders válidos para los PNG de app.json (evita el error de Jimp)
       - name: Ensure valid PNG assets (1x1 placeholders)
         run: |
           mkdir -p assets
@@ -19,13 +36,16 @@ jobs:
           echo "$PNG_BASE64" | base64 -d > assets/splash.png
           echo "$PNG_BASE64" | base64 -d > assets/adaptive-icon.png
           echo "$PNG_BASE64" | base64 -d > assets/favicon.png
+
       - name: Install dependencies
         run: npm install
-      - name: Build Expo Web export
+
+      - name: Export Expo Web (to dist/)
         run: npx expo export --platform web
-      - name: Deploy to GitHub Pages
+
+      - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           publish_branch: gh-pages
-          publish_dir: ./dist
+          publish_dir: dist
           force_orphan: true
