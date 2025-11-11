@@ -20,14 +20,14 @@ jobs:
         with:
           node-version: 20
 
-      # 1) Quitar BOM en JSON (evita 'Unexpected token' por archivos guardados en Windows/Notepad)
+      # Quita BOM en JSON guardados desde Windows (evita errores de parseo)
       - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # 2) Forzar un app.json mínimo SIN NINGUNA REFERENCIA A PNG
+      # app.json mínimo para web, sin imágenes (evita pipeline de Jimp/CRC)
       - name: Override app.json (no images)
         run: |
           cat > app.json <<'JSON'
@@ -48,29 +48,28 @@ jobs:
           cat app.json
           echo "=================="
 
-      # 3) BORRAR TODOS los PNG del repo (en cualquier carpeta y mayúsculas/minúsculas)
+      # Elimina cualquier PNG del repo para evitar errores de CRC
       - name: Remove ALL PNGs
         run: |
           find . -type f \( -iname "*.png" -o -iname "*.apng" \) -print -delete || true
 
-      # 4) Debug: confirmar que no quedó ningún PNG
+      # Diagnóstico: confirma que no queda ningún PNG
       - name: List any remaining PNGs (debug)
         run: |
           echo "Should be EMPTY:"
           find . -type f -iname "*.png" -printf "%p (%k KB)\n" | sort || true
           find . -type f -iname "*.apng" -printf "%p (%k KB)\n" | sort || true
 
-      # 5) Instalar dependencias y exportar web
       - name: Install dependencies
         run: npm install
 
       - name: Export Expo Web (to dist/)
         run: npx expo export --platform web
 
-      # 6) Publicar a gh-pages
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # necesario para publicar
           publish_branch: gh-pages
           publish_dir: dist
           force_orphan: true
