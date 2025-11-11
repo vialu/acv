@@ -20,14 +20,33 @@ jobs:
         with:
           node-version: 20
 
-      # Evita errores de parseo por BOM
+      # Evita errores por BOM en JSON guardados con Notepad/Windows
       - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # Elimina cualquier PNG para evitar el error CRC de Jimp
+      # app.json mínimo sin imágenes para evitar el pipeline de Jimp
+      - name: Override app.json (no images)
+        run: |
+          cat > app.json <<'JSON'
+          {
+            "expo": {
+              "name": "Algoritmo ACV",
+              "slug": "algoritmo-acv",
+              "version": "1.0.0",
+              "orientation": "portrait",
+              "assetBundlePatterns": [],
+              "ios": { "supportsTablet": true },
+              "android": { "versionCode": 1 },
+              "web": { "output": "static" }
+            }
+          }
+          JSON
+          cat app.json
+
+      # Elimina cualquier PNG del repo (por si quedó alguno y evita CRC)
       - name: Remove ALL PNGs
         run: |
           find . -type f \( -iname "*.png" -o -iname "*.apng" \) -print -delete || true
@@ -35,14 +54,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # ⚠️ Forzar rutas relativas con --public-url ./ (clave para GitHub Pages)
-      - name: Export Expo Web (to dist/) with relative URLs
-        run: npx expo export --platform web --public-url ./
+      - name: Export Expo Web (to dist/)
+        run: npx expo export --platform web
 
-      # Añadir 404.html para SPA (GitHub Pages redirige a index)
-      - name: Add SPA 404.html
+      # Añade archivos necesarios para GitHub Pages (SPA y sin Jekyll)
+      - name: Add SPA helpers (404.html and .nojekyll)
         run: |
           echo '<!doctype html><meta http-equiv="refresh" content="0;url=./index.html">' > dist/404.html
+          touch dist/.nojekyll
+          echo "Built files:" && ls -la dist
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
