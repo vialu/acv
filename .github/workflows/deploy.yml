@@ -20,56 +20,34 @@ jobs:
         with:
           node-version: 20
 
-      # Quita BOM en JSON guardados desde Windows (evita errores de parseo)
+      # Evita errores de parseo por BOM
       - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # app.json mínimo para web, sin imágenes (evita pipeline de Jimp/CRC)
-      - name: Override app.json (no images)
-        run: |
-          cat > app.json <<'JSON'
-          {
-            "expo": {
-              "name": "Algoritmo ACV",
-              "slug": "algoritmo-acv",
-              "version": "1.0.0",
-              "orientation": "portrait",
-              "assetBundlePatterns": [],
-              "ios": { "supportsTablet": true },
-              "android": { "versionCode": 1 },
-              "web": {}
-            }
-          }
-          JSON
-          echo "==== app.json ===="
-          cat app.json
-          echo "=================="
-
-      # Elimina cualquier PNG del repo para evitar errores de CRC
+      # Elimina cualquier PNG para evitar el error CRC de Jimp
       - name: Remove ALL PNGs
         run: |
           find . -type f \( -iname "*.png" -o -iname "*.apng" \) -print -delete || true
 
-      # Diagnóstico: confirma que no queda ningún PNG
-      - name: List any remaining PNGs (debug)
-        run: |
-          echo "Should be EMPTY:"
-          find . -type f -iname "*.png" -printf "%p (%k KB)\n" | sort || true
-          find . -type f -iname "*.apng" -printf "%p (%k KB)\n" | sort || true
-
       - name: Install dependencies
         run: npm install
 
-      - name: Export Expo Web (to dist/)
-        run: npx expo export --platform web
+      # ⚠️ Forzar rutas relativas con --public-url ./ (clave para GitHub Pages)
+      - name: Export Expo Web (to dist/) with relative URLs
+        run: npx expo export --platform web --public-url ./
+
+      # Añadir 404.html para SPA (GitHub Pages redirige a index)
+      - name: Add SPA 404.html
+        run: |
+          echo '<!doctype html><meta http-equiv="refresh" content="0;url=./index.html">' > dist/404.html
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}  # necesario para publicar
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: dist
           force_orphan: true
