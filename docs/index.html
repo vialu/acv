@@ -63,49 +63,200 @@
  */
 
 const TREE = {
-  // ====== EJEMPLO (borra esto y pega tus nodos) ======
-  "inicio": {
-    id: "inicio",
-    title: "¿Paciente con sospecha de ACV isquémico?",
-    body: "Evaluar tiempo de inicio, NIHSS, glicemia, presión y contraindicaciones.",
+  const RAW_TREE_NODES = {
+  inicio: {
+    id: 'inicio',
+    title: 'Estado de grandes vasos',
+    body: 'En pacientes con inicio de síntomas < 24 h',
     options: [
-      { label: "Sí", nextId: "tiempo-desde-inicio" },
-      { label: "No", nextId: "fin-no-aplica" }
-    ]
+      { label: 'Oclusión vaso proximal', nextId: 'tiempo desde inicio de síntomas' },
+      { label: 'Oclusión basilar', nextId: 'tiempo desde inicio de síntomas2' },
+      { label: 'No hay oclusión de gran vaso', nextId: 'tiempo desde inicio de síntomas3' },
+    ],
   },
 
-  "tiempo-desde-inicio": {
-    id: "tiempo-desde-inicio",
-    title: "¿< 24 horas desde el inicio (o despertar con ACV)?",
-    body: "Si > 24h, no es candidato a reperfusión. Considerar manejo médico general.",
+  'tiempo desde inicio de síntomas': {
+    id: 'tiempo desde inicio de síntomas',
+    title: 'Oclusión vaso proximal',
+    body: 'Oclusión vaso proximal',
     options: [
-      { label: "Sí", nextId: "criterios-reperfusion" },
-      { label: "No", nextId: "fin-no-aplica" }
-    ]
+      { label: 'Wake up o inicio incierto', nextId: 'perfusión' },
+      { label: 'Síntomas < 6 horas', nextId: 'NIHS6' },                    // placeholder
+      { label: 'Entre 6-24 h, Rankin 3 o menor', nextId: 'perfusión' }, // placeholder
+    ],
   },
 
-  "criterios-reperfusion": {
-    id: "criterios-reperfusion",
-    title: "Criterios de reperfusión",
-    body: "1) Trombolisis EV si dentro de ventana y sin contraindicaciones.\n2) Trombectomía si LVO y ASPECTS adecuado.",
+  'perfusión': {
+    id: 'perfusión',
+    title: 'Perfusión',
+    body:
+      'Perfusión (+): CBF <30%, mismatch absoluto >10 ml (IVT) / >15 ml (EVT); mismatch relativo >1,2 (IVT) / >1,8 (EVT).',
     options: [
-      { label: "Candidato", nextId: "final-reperfusion" },
-      { label: "No candidato", nextId: "fin-no-aplica" }
-    ]
+      { label: '(+)', nextId: 'final1' }, // placeholder
+      { label: '(-)', nextId: 'No es candidato a reperfusión' },
+    ],
   },
 
-  "final-reperfusion": {
-    id: "final-reperfusion",
-    title: "Reperfusión",
-    result: "Trombectomía mecánica si LVO y ASPECTS > 3. Trombolisis EV además si síntomas ≤ 9 h y sin CI."
+  'tiempo desde inicio de síntomas2': {
+    id: 'tiempo desde inicio de síntomas2',
+    title: 'Tiempo desde inicio de síntomas',
+    body: 'ACV del despertar o menos de 24 h',
+    options: [
+      { label: 'Sí', nextId: 'NIHS2' },
+      { label: 'No', nextId: 'No es candidato a reperfusión' },
+    ],
   },
 
-  "fin-no-aplica": {
-    id: "fin-no-aplica",
-    title: "No es candidato a reperfusión",
-    result: "Manejo médico general, prevención secundaria y rehabilitación temprana."
-  }
-  // ====== FIN EJEMPLO ======
+'NIHS2': {
+    id: 'NIHS2',
+    title: 'Calcular NIHS',
+    body:
+      '',
+    options: [
+      { label: 'NIH <6', nextId: 'tromb1' }, // placeholder
+      { label: 'NIH 6-9', nextId: 'tromb2' },
+      { label: 'NIH >10', nextId: 'tromb3' },
+    ],
+  },
+
+  'No es candidato a reperfusión': {
+    id: 'No es candidato a reperfusión',
+    title: 'No es candidato a reperfusión',
+    result: 'No es candidato a reperfusión',
+  },
+
+  'final1': {
+    id: 'final1',
+    title: 'Reperfusión',
+    result:
+      'Trombectomía mecánica si ASPECTS > 3. Trombólisis EV además si síntomas > 9 h (según criterios locales).',
+  },
+
+    'tromb1': {
+    id: 'tromb1',
+    title: 'Reperfusión',
+     result:
+      'Trombolisis EV (si <5h) + trombectomia si sintomas fluctuantes o deterioro temprano',
+  },
+      'tromb2': {
+    id: 'tromb2',
+    title: 'Reperfusión',
+    result:
+      'Trombolisis EV (si <5h) + trombectomía si déficit invalidante o mala colateralidad pC_SC <6' ,
+  },
+      'tromb3': {
+    id: 'tromb3',
+    title: 'Reperfusión',
+    result:
+      'Trombolisis EV (si <5h) + trombecotmia mecánica',
+  },
+
+  'NIHS6': {
+    id: 'NIHS6',
+    title: 'Valor NIH',
+    body: '',
+    options: [
+      { label: 'NIHS 6 o mas', nextId: 'NIHS6_1' },
+      { label: 'NIHS < 6', nextId: 'NIHS6_2' },                    
+    ],
+  },
+
+    'NIHS6_1': {
+    id: 'NIHS6_1',
+    title: 'NIHS 6 o más',
+    result:
+      'Trombolisis EV (si <5h) + trombecotmia mecánica(ASPECT >3)',
+  },
+
+    'NIHS6_2': {
+    id: 'NIHS6_2',
+    title: 'NIH < 6 horas',
+    result:
+      'Trombolisis EV (si <5h) + trombecotmia mecánicaTrombolisis EV (si <5hrs) + trombectomia mecanica si sintoma fluctuante o deficit invalidante',
+  },
+
+  'tiempo desde inicio de síntomas3': {
+    id: 'tiempo desde inicio de síntomas3',
+    title: 'Tiempo de inicio de los síntomas',
+    options: [
+      { label: 'Síntomas < 6 h', nextId: 'tromb4' },    // placeholder
+      { label: 'Síntomas > 6 h', nextId: 'tromb5' },    // placeholder
+      { label: 'ACV del despertar o inicio incierto menor a 24h', nextId: 'tromb6' }, // placeholder
+    ],
+  },
+
+  'tromb4': {
+    id: 'tromb4',
+    title: 'Reperfusión',
+    result: 'Trombolisis EV ',
+    },
+
+
+
+  'tromb5': {
+    id: 'tromb5',
+    title: 'Tiempo de inicio de los síntomas',
+    options: [
+      { label: 'Síntomas < 9 h', nextId: 'perfusion2' },    // placeholder
+      { label: 'Síntomas > 9 h', nextId: 'No es candidato a reperfusión' },    // placeholder
+      
+    ],
+  },
+
+  'tromb6': {
+    id: 'tromb6',
+    title: 'Tiempo de inicio de los síntomas',
+    options: [
+      { label: 'Síntomas < 9 h', nextId: 'nihs4' },    // placeholder
+      { label: 'Síntomas > 9 h', nextId: 'FLAIR' },    // placeholder
+      
+    ],
+  },
+
+  'nihs4': {
+    id: 'nihs4',
+    title: 'calcular NIHS',
+    options: [
+      { label: 'NIHS <= 4', nextId: 'FLAIR' },    // placeholder
+      { label: 'NIHS > 4', nextId: 'perfusion2' },    // placeholder
+      
+    ],
+  },
+
+  'FLAIR': {
+    id: 'FLAIR',
+    title: 'RM FLAIR',
+    options: [
+      { label: 'FLAIR muestra infarto', nextId: 'No es candidato a reperfusión' },    // placeholder
+      { label: 'FLAIR no muestra infarto', nextId: 'tromb4' },    // placeholder
+      
+    ],
+  },
+
+  'perfusión2': {
+    id: 'perfusión2',
+    title: 'Perfusión',
+    body:
+      'Perfusión (+): CBF <30%, mismatch absoluto >10 ml (IVT) / >15 ml (EVT); mismatch relativo >1,2 (IVT) / >1,8 (EVT).',
+    options: [
+      { label: '(+)', nextId: 'tromb4' }, // placeholder
+      { label: '(-)', nextId: 'No es candidato a reperfusión' },
+    ],
+  },
+
+  // PLACEHOLDERS para evitar pantallas en blanco
+  lkw: {
+    id: 'lkw',
+    title: 'LKW / Ventana',
+    result: 'Nodo temporal (placeholder): define aquí el flujo real para ventana / LKW.',
+  },
+  'no-deficit': {
+    id: 'no-deficit',
+    title: 'Sin déficit focal claro',
+    result: 'Nodo temporal (placeholder): completa esta rama o redirígela donde corresponda.',
+  },
+};
+
 };
 
 // <-- Cambia esto por el id real con el que quieres iniciar -->
