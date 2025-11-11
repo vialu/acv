@@ -20,30 +20,19 @@ jobs:
         with:
           node-version: 20
 
-      # (Opcional, pero recomendable) quita BOM de JSON guardados en Windows
+      # Quita BOM de JSON guardados en Windows (evita 'Unexpected token' en package/app.json)
       - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # Placeholders válidos para los PNG de app.json (evita el error de Jimp)
-      - name: Ensure valid PNG assets (1x1 placeholders)
-        run: |
-          mkdir -p assets
-          PNG_BASE64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axhZxkAAAAASUVORK5CYII="
-          echo "$PNG_BASE64" | base64 -d > assets/icon.png
-          echo "$PNG_BASE64" | base64 -d > assets/splash.png
-          echo "$PNG_BASE64" | base64 -d > assets/adaptive-icon.png
-          echo "$PNG_BASE64" | base64 -d > assets/favicon.png
-
-      - name: Install dependencies
-            - name: Create valid PNG assets via Node
+      # Crea PNGs válidos 1x1 (reemplaza placeholders corruptos y evita errores de Jimp/CRC)
+      - name: Create valid PNG assets via Node
         run: |
           node - <<'NODE'
           const fs = require('fs');
           const path = require('path');
-          // PNG 1x1 transparente válido
           const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axhZxkAAAAASUVORK5CYII=';
           const buf = Buffer.from(pngB64, 'base64');
           fs.mkdirSync('assets', { recursive: true });
@@ -52,6 +41,7 @@ jobs:
           });
           NODE
 
+      - name: Install dependencies
         run: npm install
 
       - name: Export Expo Web (to dist/)
