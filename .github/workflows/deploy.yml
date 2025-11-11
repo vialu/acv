@@ -20,15 +20,15 @@ jobs:
         with:
           node-version: 20
 
-      # 1) Quitar BOM en JSON (evita 'Unexpected token' al parsear)
+      # 1) Quitar BOM en JSON (evita 'Unexpected token' por archivos guardados en Windows/Notepad)
       - name: Strip UTF-8 BOM (Windows JSONs)
         run: |
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           sed -i '1s/^\xEF\xBB\xBF//' app.json || true
           sed -i '1s/^\xEF\xBB\xBF//' eas.json || true
 
-      # 2) Forzar un app.json mínimo sin referencias a imágenes problemáticas
-      - name: Override app.json (minimal, web-safe)
+      # 2) Forzar un app.json mínimo SIN NINGUNA REFERENCIA A PNG
+      - name: Override app.json (no images)
         run: |
           cat > app.json <<'JSON'
           {
@@ -37,49 +37,37 @@ jobs:
               "slug": "algoritmo-acv",
               "version": "1.0.0",
               "orientation": "portrait",
-              "icon": "./assets/icon.png",
-              "assetBundlePatterns": ["assets/*"],
+              "assetBundlePatterns": [],
               "ios": { "supportsTablet": true },
               "android": { "versionCode": 1 },
-              "web": { "favicon": "./assets/favicon.png" }
+              "web": {}
             }
           }
           JSON
+          echo "==== app.json ===="
           cat app.json
+          echo "=================="
 
-      # 3) Eliminar cualquier PNG fuera de ./assets (potenciales corruptos)
-      - name: Remove stray PNGs outside ./assets
+      # 3) BORRAR TODOS los PNG del repo (en cualquier carpeta y mayúsculas/minúsculas)
+      - name: Remove ALL PNGs
         run: |
-          find . -type f -name "*.png" -not -path "./assets/*" -print -delete || true
+          find . -type f \( -iname "*.png" -o -iname "*.apng" \) -print -delete || true
 
-      # 4) Crear PNGs válidos en ./assets con Node (1x1 transparentes)
-      - name: Create valid PNG assets via Node
+      # 4) Debug: confirmar que no quedó ningún PNG
+      - name: List any remaining PNGs (debug)
         run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-          const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axhZxkAAAAASUVORK5CYII=';
-          const buf = Buffer.from(pngB64, 'base64');
-          fs.mkdirSync('assets', { recursive: true });
-          ['icon.png','favicon.png'].forEach(n => {
-            fs.writeFileSync(path.join('assets', n), buf);
-          });
-          NODE
+          echo "Should be EMPTY:"
+          find . -type f -iname "*.png" -printf "%p (%k KB)\n" | sort || true
+          find . -type f -iname "*.apng" -printf "%p (%k KB)\n" | sort || true
 
-      # 5) Debug: enumerar PNGs finales y tamaños
-      - name: List all PNG files (debug)
-        run: |
-          echo "PNG files present:"
-          find . -type f -name "*.png" -printf "%p (%k KB)\n" | sort || true
-
-      # 6) Instalar dependencias y exportar web
+      # 5) Instalar dependencias y exportar web
       - name: Install dependencies
         run: npm install
 
       - name: Export Expo Web (to dist/)
         run: npx expo export --platform web
 
-      # 7) Publicar a gh-pages
+      # 6) Publicar a gh-pages
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
