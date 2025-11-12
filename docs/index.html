@@ -21,6 +21,13 @@
     .chip{font-size:12px;color:#c9d7ff;background:#0f182b;border:1px solid #263354;border-radius:999px;padding:6px 10px}
     .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
     .link{color:var(--accent);text-decoration:none}
+
+    /* Rastro de decisiones */
+    .trail{margin-top:18px}
+    .trail h3{font-size:14px;color:#c9d7ff;margin:0 0 8px}
+    .trail-list{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+    .trail-item{background:#0f182b;border:1px solid #263354;border-radius:10px;padding:8px 10px;font-size:13px;color:#d7e1ff}
+    .trail-item small{color:#9fb0d8}
   </style>
 </head>
 <body>
@@ -41,214 +48,125 @@
       <div id="options" class="options"></div>
       <div id="footer" class="footer"></div>
     </div>
+
+    <div id="trail" class="trail" hidden>
+      <h3>Ruta tomada</h3>
+      <ol id="trailList" class="trail-list"></ol>
+    </div>
   </div>
 
 <script>
 /**
- * ÁRBOL pegado desde tu App.js (con un fix: "perfusion2" → "perfusión2")
- * Las claves del objeto coinciden con cada `id`. Las opciones usan { label, nextId }.
+ * Pega aquí tu árbol. Las CLAVES del objeto deben coincidir con cada `id`.
+ * Ejemplo mínimo; reemplázalo por tu TREE real.
  */
 const TREE = {
   "inicio": {
     id: "inicio",
-    title: "Estado de grandes vasos",
-    body: "En pacientes con inicio de síntomas < 24 h",
+    title: "¿Paciente con sospecha de ACV isquémico?",
+    body: "Evaluar tiempo de inicio, NIHSS, glicemia, presión y contraindicaciones.",
     options: [
-      { label: "Oclusión vaso proximal", nextId: "tiempo desde inicio de síntomas" },
-      { label: "Oclusión basilar", nextId: "tiempo desde inicio de síntomas2" },
-      { label: "No hay oclusión de gran vaso", nextId: "tiempo desde inicio de síntomas3" }
+      { label: "Sí", nextId: "tiempo" },
+      { label: "No", nextId: "final-no" }
     ]
   },
-
-  "tiempo desde inicio de síntomas": {
-    id: "tiempo desde inicio de síntomas",
-    title: "Oclusión vaso proximal",
-    body: "Oclusión vaso proximal",
+  "tiempo": {
+    id: "tiempo",
+    title: "¿< 24 h desde inicio (o despertar con ACV)?",
+    body: "Si > 24 h, no candidato a reperfusión.",
     options: [
-      { label: "Wake up o inicio incierto", nextId: "perfusión" },
-      { label: "Síntomas < 6 horas", nextId: "NIHS6" },
-      { label: "Entre 6-24 h, Rankin 3 o menor", nextId: "perfusión" }
+      { label: "Sí", nextId: "perf" },
+      { label: "No", nextId: "final-no" }
     ]
   },
-
-  "perfusión": {
-    id: "perfusión",
-    title: "Perfusión",
+  "perf": {
+    id: "perf",
+    title: "Criterios de perfusión",
     body: "Perfusión (+): CBF <30%, mismatch absoluto >10 ml (IVT) / >15 ml (EVT); mismatch relativo >1,2 (IVT) / >1,8 (EVT).",
     options: [
-      { label: "(+)", nextId: "final1" },
-      { label: "(-)", nextId: "No es candidato a reperfusión" }
+      { label: "(+)", nextId: "final-si" },
+      { label: "(-)", nextId: "final-no" }
     ]
   },
-
-  "tiempo desde inicio de síntomas2": {
-    id: "tiempo desde inicio de síntomas2",
-    title: "Tiempo desde inicio de síntomas",
-    body: "ACV del despertar o menos de 24 h",
-    options: [
-      { label: "Sí", nextId: "NIHS2" },
-      { label: "No", nextId: "No es candidato a reperfusión" }
-    ]
+  "final-si": {
+    id: "final-si",
+    title: "Reperfusión",
+    result: "Trombectomía mecánica si LVO y ASPECTS > 3. Trombolisis EV además si síntomas ≤ 9 h y sin CI."
   },
-
-  "NIHS2": {
-    id: "NIHS2",
-    title: "Calcular NIHS",
-    body: "",
-    options: [
-      { label: "NIH <6", nextId: "tromb1" },
-      { label: "NIH 6-9", nextId: "tromb2" },
-      { label: "NIH >10", nextId: "tromb3" }
-    ]
-  },
-
-  "No es candidato a reperfusión": {
-    id: "No es candidato a reperfusión",
+  "final-no": {
+    id: "final-no",
     title: "No es candidato a reperfusión",
-    result: "No es candidato a reperfusión"
-  },
-
-  "final1": {
-    id: "final1",
-    title: "Reperfusión",
-    result: "Trombectomía mecánica si ASPECTS > 3. Trombólisis EV además si síntomas > 9 h (según criterios locales)."
-  },
-
-  "tromb1": {
-    id: "tromb1",
-    title: "Reperfusión",
-    result: "Trombolisis EV (si <5h) + trombectomia si sintomas fluctuantes o deterioro temprano"
-  },
-
-  "tromb2": {
-    id: "tromb2",
-    title: "Reperfusión",
-    result: "Trombolisis EV (si <5h) + trombectomía si déficit invalidante o mala colateralidad pC_SC <6"
-  },
-
-  "tromb3": {
-    id: "tromb3",
-    title: "Reperfusión",
-    result: "Trombolisis EV (si <5h) + trombecotmia mecánica"
-  },
-
-  "NIHS6": {
-    id: "NIHS6",
-    title: "Valor NIH",
-    body: "",
-    options: [
-      { label: "NIHS 6 o mas", nextId: "NIHS6_1" },
-      { label: "NIHS < 6", nextId: "NIHS6_2" }
-    ]
-  },
-
-  "NIHS6_1": {
-    id: "NIHS6_1",
-    title: "NIHS 6 o más",
-    result: "Trombolisis EV (si <5h) + trombecotmia mecánica(ASPECT >3)"
-  },
-
-  "NIHS6_2": {
-    id: "NIHS6_2",
-    title: "NIH < 6 horas",
-    result: "Trombolisis EV (si <5h) + trombecotmia mecánicaTrombolisis EV (si <5hrs) + trombectomia mecanica si sintoma fluctuante o deficit invalidante"
-  },
-
-  "tiempo desde inicio de síntomas3": {
-    id: "tiempo desde inicio de síntomas3",
-    title: "Tiempo de inicio de los síntomas",
-    options: [
-      { label: "Síntomas < 6 h", nextId: "tromb4" },
-      { label: "Síntomas > 6 h", nextId: "tromb5" },
-      { label: "ACV del despertar o inicio incierto menor a 24h", nextId: "tromb6" }
-    ]
-  },
-
-  "tromb4": {
-    id: "tromb4",
-    title: "Reperfusión",
-    result: "Trombolisis EV "
-  },
-
-  "tromb5": {
-    id: "tromb5",
-    title: "Tiempo de inicio de los síntomas",
-    options: [
-      { label: "Síntomas < 9 h", nextId: "perfusión2" },  <!-- fix aplicado -->
-      { label: "Síntomas > 9 h", nextId: "No es candidato a reperfusión" }
-    ]
-  },
-
-  "tromb6": {
-    id: "tromb6",
-    title: "Tiempo de inicio de los síntomas",
-    options: [
-      { label: "Síntomas < 9 h", nextId: "nihs4" },
-      { label: "Síntomas > 9 h", nextId: "FLAIR" }
-    ]
-  },
-
-  "nihs4": {
-    id: "nihs4",
-    title: "calcular NIHS",
-    options: [
-      { label: "NIHS <= 4", nextId: "FLAIR" },
-      { label: "NIHS > 4", nextId: "perfusión2" }
-    ]
-  },
-
-  "FLAIR": {
-    id: "FLAIR",
-    title: "RM FLAIR",
-    options: [
-      { label: "FLAIR muestra infarto", nextId: "No es candidato a reperfusión" },
-      { label: "FLAIR no muestra infarto", nextId: "tromb4" }
-    ]
-  },
-
-  "perfusión2": {
-    id: "perfusión2",
-    title: "Perfusión",
-    body: "Perfusión (+): CBF <30%, mismatch absoluto >10 ml (IVT) / >15 ml (EVT); mismatch relativo >1,2 (IVT) / >1,8 (EVT).",
-    options: [
-      { label: "(+)", nextId: "tromb4" },
-      { label: "(-)", nextId: "No es candidato a reperfusión" }
-    ]
-  },
-
-  "lkw": {
-    id: "lkw",
-    title: "LKW / Ventana",
-    result: "Nodo temporal (placeholder): define aquí el flujo real para ventana / LKW."
-  },
-
-  "no-deficit": {
-    id: "no-deficit",
-    title: "Sin déficit focal claro",
-    result: "Nodo temporal (placeholder): completa esta rama o redirígela donde corresponda."
+    result: "Manejo médico general, prevención secundaria y rehabilitación temprana."
   }
 };
 
-// Nodo inicial:
+// Cambia por tu nodo inicial real:
 const START_ID = "inicio";
 
-// ========== Motor del árbol ==========
-const state = { currentId: null, history: [] };
+/* ===================== Motor ===================== */
+
+const state = {
+  currentId: null,
+  history: [],           // ids previos para botón Atrás
+  trail: []              // [{fromId, fromTitle, choiceLabel, toId, toTitle}]
+};
+
 const byId = id => TREE[id];
 const isFinal = node => !!node.result;
 
-function go(id, pushHistory=true){
+function go(id, pushHistory=true, viaLabel=null){
   const node = byId(id);
   if(!node){ renderError("Nodo no encontrado: " + id); return; }
+
+  // Registrar trail si venimos de un paso anterior con una elección
+  if (viaLabel && state.currentId) {
+    const from = byId(state.currentId);
+    state.trail.push({
+      fromId: state.currentId,
+      fromTitle: from?.title || state.currentId,
+      choiceLabel: viaLabel,
+      toId: id,
+      toTitle: node.title || id
+    });
+  }
+
   if(pushHistory && state.currentId) state.history.push(state.currentId);
   state.currentId = id;
+
   render(node);
   location.hash = encodeURIComponent(id);
 }
 
 function back(){
   const prev = state.history.pop();
-  if(prev){ go(prev, false); }
+  if(prev){
+    // Al retroceder, también quitamos el último paso del trail si corresponde
+    state.trail.pop();
+    go(prev, false, null);
+  }
+}
+
+function renderTrail(){
+  const box = document.getElementById('trail');
+  const list = document.getElementById('trailList');
+  list.innerHTML = "";
+
+  if(!state.trail.length){
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+
+  state.trail.forEach((step, i)=>{
+    const li = document.createElement('li');
+    li.className = 'trail-item';
+    li.innerHTML = `
+      <div><strong>${i+1}.</strong> ${step.fromTitle}</div>
+      <div><small>Elegiste:</small> ${step.choiceLabel}</div>
+      <div><small>→</small> ${step.toTitle}</div>
+    `;
+    list.appendChild(li);
+  });
 }
 
 function renderError(msg){
@@ -258,6 +176,7 @@ function renderError(msg){
   document.getElementById('nodeBody').textContent = msg;
   document.getElementById('options').innerHTML = "";
   document.getElementById('footer').innerHTML = "";
+  renderTrail();
 }
 
 function render(node){
@@ -268,67 +187,69 @@ function render(node){
   const foot  = document.getElementById('footer');
 
   card.hidden = false;
-  t.textContent = node.title || node.id;
-  b.textContent = node.body || "";   // textContent → muestra < y >
-
   opts.innerHTML = "";
   foot.innerHTML = "";
 
   if(isFinal(node)){
+    // Solo mostrar el RESULTADO (sin botones ni título)
+    t.textContent = "";
     b.textContent = node.result || "";
-    const again = document.createElement('button');
-    again.className = 'btn';
-    again.textContent = 'Volver al inicio';
-    again.onclick = () => { state.history = []; go(START_ID, false); };
-    opts.appendChild(again);
+  } else {
+    // Paso intermedio: título + body + opciones + chips
+    t.textContent = node.title || node.id;
+    b.textContent = node.body || "";
+
+    (node.options || []).forEach(o=>{
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = o.label;
+      btn.onclick = () => go(o.nextId, true, o.label);  // registramos el label en trail
+      opts.appendChild(btn);
+    });
 
     const idChip = document.createElement('div');
     idChip.className = 'chip';
     idChip.textContent = `id: ${node.id}`;
     foot.appendChild(idChip);
-    return;
+
+    if(state.history.length){
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn';
+      backBtn.style.padding = '8px 10px';
+      backBtn.textContent = '← Atrás';
+      backBtn.onclick = back;
+      foot.appendChild(backBtn);
+    }
   }
 
-  (node.options || []).forEach(o=>{
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.textContent = o.label;
-    btn.onclick = () => go(o.nextId);
-    opts.appendChild(btn);
-  });
-
-  const idChip = document.createElement('div');
-  idChip.className = 'chip';
-  idChip.textContent = `id: ${node.id}`;
-  foot.appendChild(idChip);
-
-  if(state.history.length){
-    const backBtn = document.createElement('button');
-    backBtn.className = 'btn';
-    backBtn.style.padding = '8px 10px';
-    backBtn.textContent = '← Atrás';
-    backBtn.onclick = back;
-    foot.appendChild(backBtn);
-  }
+  renderTrail();
 }
 
+// Hash navegable
 window.addEventListener('hashchange', ()=>{
   const h = decodeURIComponent(location.hash.replace(/^#/, ''));
-  if(h && TREE[h]){ state.history = []; go(h, false); }
+  if(h && TREE[h]){ 
+    // Si alguien navega directo por hash, reiniciamos para evitar trail inconsistente
+    state.history = [];
+    state.trail = [];
+    go(h, false, null);
+  }
 });
 
+// Reinicio total
 document.getElementById('reset').addEventListener('click', e=>{
   e.preventDefault();
   state.history = [];
+  state.trail = [];
   location.hash = '';
-  go(START_ID, false);
+  go(START_ID, false, null);
 });
 
 // Arranque
 (()=> {
   const h = decodeURIComponent(location.hash.replace(/^#/, ''));
-  if(h && TREE[h]) go(h, false);
-  else go(START_ID, false);
+  if(h && TREE[h]) go(h, false, null);
+  else go(START_ID, false, null);
 })();
 </script>
 </body>
