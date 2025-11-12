@@ -6,26 +6,25 @@
   <title>Algoritmo ACV</title>
   <style>
     :root { --bg:#0b1220; --card:#121a2b; --text:#e9eefb; --muted:#9fb0d8; --accent:#4da3ff; }
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;}
     .wrap{max-width:920px;margin:0 auto;padding:24px;}
     .header{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
     .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#4da3ff,#7ee7ff);}
     h1{font-size:22px;margin:0}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .actions{display:flex;gap:8px;align-items:center}
+    .link{color:var(--accent);text-decoration:none}
+    .btn{padding:8px 12px;border-radius:10px;border:1px solid #263354;background:#0f182b;color:var(--text);cursor:pointer;font-weight:600}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
     .card{background:var(--card);border:1px solid #1c2741;border-radius:14px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
     .title{font-size:20px;margin:0 0 10px}
     .body{color:var(--muted);margin:0 0 16px;white-space:pre-line}
     .options{display:grid;gap:10px;margin-top:6px}
-    .btn{padding:12px 14px;border-radius:12px;border:1px solid #263354;background:#0f182b;color:var(--text);cursor:pointer;font-weight:600;text-align:left}
-    .btn:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,163,255,.15)}
-    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-    .link{color:var(--accent);text-decoration:none}
-
-    /* Resultado final */
+    .option{padding:12px 14px;border-radius:12px;border:1px solid #263354;background:#0f182b;color:var(--text);cursor:pointer;font-weight:600;text-align:left}
+    .option:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,163,255,.15)}
     .result{background:#1b3a4b;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px}
     .result h2{margin:0 0 6px;font-size:18px;color:#e0fbfc}
     .result p{margin:0;white-space:pre-line;color:#e0fbfc}
-
-    /* Rastro de decisiones */
     .trail{margin-top:18px}
     .trail h3{font-size:14px;color:#c9d7ff;margin:0 0 8px}
     .trail-list{list-style:none;padding:0;margin:0;display:grid;gap:6px}
@@ -40,7 +39,8 @@
         <div class="logo"></div>
         <h1>Algoritmo ACV</h1>
       </div>
-      <div>
+      <div class="actions">
+        <button id="backBtn" class="btn" disabled>← Atrás</button>
         <a id="reset" class="link" href="#">Reiniciar</a>
       </div>
     </div>
@@ -62,7 +62,7 @@
   </div>
 
 <script>
-/* ======= ÁRBOL basado en tu App.js (con fix perfusion2→perfusión2) ======= */
+/* ======= ÁRBOL (puedes editarlo aquí) ======= */
 const TREE = {
   "inicio": {
     id: "inicio",
@@ -246,10 +246,14 @@ const TREE = {
 
 const START_ID = "inicio";
 
-/* ======= Motor con breadcrumb persistente y hash controlado ======= */
+/* ======= Motor con breadcrumb y botón Atrás global ======= */
 const state = { currentId: null, history: [], trail: [], justSetHash: false };
 const byId = id => TREE[id];
 const isFinal = n => !!n.result;
+
+function updateBackDisabled(){
+  document.getElementById('backBtn').disabled = state.history.length === 0;
+}
 
 function go(id, viaLabel=null, pushHistory=true){
   const node = byId(id);
@@ -273,9 +277,25 @@ function go(id, viaLabel=null, pushHistory=true){
 
   const newHash = encodeURIComponent(id);
   if (location.hash.replace(/^#/, '') !== newHash) {
-    state.justSetHash = true; // evitamos limpiar el rastro en el listener
+    state.justSetHash = true;
     location.hash = newHash;
   }
+  updateBackDisabled();
+}
+
+function back(){
+  if (state.history.length === 0) return;
+  const prevId = state.history.pop();
+  // Al retroceder, remover el último paso del rastro si existía
+  if (state.trail.length) state.trail.pop();
+  state.currentId = prevId;
+  render(byId(prevId));
+  const newHash = encodeURIComponent(prevId);
+  if (location.hash.replace(/^#/, '') !== newHash) {
+    state.justSetHash = true;
+    location.hash = newHash;
+  }
+  updateBackDisabled();
 }
 
 function render(node){
@@ -292,7 +312,6 @@ function render(node){
   fin.hidden = true;
 
   if (isFinal(node)) {
-    // Solo resultado (sin título ni botones)
     t.textContent = "";
     b.textContent = "";
     fin.hidden = false;
@@ -303,7 +322,7 @@ function render(node){
     b.textContent = node.body || "";
     (node.options || []).forEach(o=>{
       const btn = document.createElement('button');
-      btn.className = 'btn';
+      btn.className = 'option';
       btn.textContent = o.label;
       btn.onclick = () => go(o.nextId, o.label, true);
       opts.appendChild(btn);
@@ -354,21 +373,21 @@ document.getElementById('reset').addEventListener('click', e=>{
   go(START_ID, null, false);
 });
 
-// Hash navegable SIN borrar rastro
+document.getElementById('backBtn').addEventListener('click', back);
+
 window.addEventListener('hashchange', ()=>{
   const target = decodeURIComponent(location.hash.replace(/^#/, ''));
   if (!target) return;
-  if (state.justSetHash) { state.justSetHash = false; return; } // cambio interno → no tocar
-  if (target === state.currentId) return; // mismo nodo → ignorar
-  // Navegación directa por URL: no borrar trail si ya existía; solo mover sin registrar opción
+  if (state.justSetHash) { state.justSetHash = false; return; }
+  if (target === state.currentId) return;
   go(target, null, false);
 });
 
-// Arranque
 (()=> {
   const h = decodeURIComponent(location.hash.replace(/^#/, ''));
   if(h && TREE[h]) go(h, null, false);
   else go(START_ID, null, false);
+  updateBackDisabled();
 })();
 </script>
 </body>
