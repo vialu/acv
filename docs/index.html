@@ -1,376 +1,156 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Algoritmo ACV</title>
-  <style>
-    :root { --bg:#0b1220; --card:#121a2b; --text:#e9eefb; --muted:#9fb0d8; --accent:#4da3ff; }
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";}
-    .wrap{max-width:860px;margin:0 auto;padding:24px;}
-    .header{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
-    .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#4da3ff,#7ee7ff);}
-    h1{font-size:22px;margin:0}
-    .card{background:var(--card);border:1px solid #1c2741;border-radius:14px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
-    .title{font-size:18px;margin:0 0 8px}
-    .body{color:var(--muted);margin:0 0 16px;white-space:pre-line}
-    .options{display:grid;gap:10px;margin-top:6px}
-    .btn{padding:12px 14px;border-radius:12px;border:1px solid #263354;background:#0f182b;color:var(--text);cursor:pointer;font-weight:600;text-align:left}
-    .btn:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,163,255,.15)}
-    .footer{display:flex;gap:8px;margin-top:18px}
-    .chip{font-size:12px;color:#c9d7ff;background:#0f182b;border:1px solid #263354;border-radius:999px;padding:6px 10px}
-    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-    .link{color:var(--accent);text-decoration:none}
-  </style>
+<meta charset="UTF-8" />
+<title>Algoritmo ACV</title>
+<style>
+body { background:#0b132b; color:white; font-family:Arial; margin:0; padding:0; }
+#app { padding:20px; max-width:600px; margin:auto; }
+h1 { font-size:22px; margin-bottom:10px; }
+p { font-size:16px; line-height:22px; }
+button {
+  display:block; width:100%; margin:8px 0; padding:14px;
+  background:#5bc0be; border:none; border-radius:10px;
+  color:#062925; font-size:16px; font-weight:bold; cursor:pointer;
+}
+button.header { background:#3a506b; color:white; width:auto; display:inline-block; margin-right:6px; }
+.result { background:#1b3a4b; padding:16px; border-radius:12px; margin-top:14px; }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="header">
-        <div class="logo"></div>
-        <h1>Algoritmo ACV</h1>
-      </div>
-      <div>
-        <a id="reset" class="link" href="#">Reiniciar</a>
-      </div>
-    </div>
-
-    <div id="card" class="card" hidden>
-      <h2 class="title" id="nodeTitle"></h2>
-      <p class="body" id="nodeBody"></p>
-      <div id="options" class="options"></div>
-      <div id="footer" class="footer"></div>
-    </div>
-  </div>
+<div id="app"></div>
 
 <script>
-/**
- * === Cómo cargar tu árbol ===
- * 1) Copia de tu App.js el objeto de nodos (diccionario) y pega dentro de TREE.
- * 2) Asegúrate de indicar el id de partida en START_ID.
- *
- * Formato por nodo:
- * {
- *   id: 'identificador-unico',
- *   title: 'Título mostrado',
- *   body: 'Texto (puede tener \n saltos de línea)',
- *   options: [ { label: 'Sí', nextId: 'otro-id' }, { label: 'No', nextId: 'fin-no-aplica' } ]
- *   // O si es final:
- *   result: 'Recomendación final / conclusión'
- * }
- *
- * Importante: las claves del diccionario deben ser strings idénticas al campo id.
- */
-
-const TREE = {
-  const RAW_TREE_NODES = {
+// ===================== ÁRBOL =====================
+const ARBOL = {
   inicio: {
-    id: 'inicio',
-    title: 'Estado de grandes vasos',
-    body: 'En pacientes con inicio de síntomas < 24 h',
+    title: "Estado de grandes vasos",
+    body: "En pacientes con inicio de síntomas < 24 h",
     options: [
-      { label: 'Oclusión vaso proximal', nextId: 'tiempo desde inicio de síntomas' },
-      { label: 'Oclusión basilar', nextId: 'tiempo desde inicio de síntomas2' },
-      { label: 'No hay oclusión de gran vaso', nextId: 'tiempo desde inicio de síntomas3' },
-    ],
+      { label: "Oclusión vaso proximal", next: "t1" },
+      { label: "Oclusión basilar", next: "t2" },
+      { label: "No hay oclusión de gran vaso", next: "t3" },
+    ]
   },
 
-  'tiempo desde inicio de síntomas': {
-    id: 'tiempo desde inicio de síntomas',
-    title: 'Oclusión vaso proximal',
-    body: 'Oclusión vaso proximal',
-    options: [
-      { label: 'Wake up o inicio incierto', nextId: 'perfusión' },
-      { label: 'Síntomas < 6 horas', nextId: 'NIHS6' },                    // placeholder
-      { label: 'Entre 6-24 h, Rankin 3 o menor', nextId: 'perfusión' }, // placeholder
-    ],
+  t1: { title: "Oclusión vaso proximal", body:"", options:[
+    { label:"Wake up o inicio incierto", next:"perf1" },
+    { label:"Síntomas < 6 horas", next:"nih6" },
+    { label:"Entre 6-24 h, Rankin 3 o menor", next:"perf1" },
+  ]},
+
+  perf1:{ title:"Perfusión",
+    body:"CBF <30%, mismatch >10 ml (IVT) / >15 ml (EVT).",
+    options:[
+      {label:"(+)", next:"final1"},
+      {label:"(-)", next:"no"},
+    ]
   },
 
-  'perfusión': {
-    id: 'perfusión',
-    title: 'Perfusión',
-    body:
-      'Perfusión (+): CBF <30%, mismatch absoluto >10 ml (IVT) / >15 ml (EVT); mismatch relativo >1,2 (IVT) / >1,8 (EVT).',
-    options: [
-      { label: '(+)', nextId: 'final1' }, // placeholder
-      { label: '(-)', nextId: 'No es candidato a reperfusión' },
-    ],
+  t2:{ title:"ACV despertar o <24h", options:[
+    {label:"Sí", next:"nih2"},
+    {label:"No", next:"no"},
+  ]},
+
+  nih2:{title:"Calcular NIH", options:[
+    {label:"NIH < 6", next:"tromb1"},
+    {label:"NIH 6-9", next:"tromb2"},
+    {label:"NIH > 10", next:"tromb3"},
+  ]},
+
+  no:{title:"No es candidato a reperfusión", result:"No es candidato a reperfusión"},
+
+  final1:{title:"Reperfusión",
+    result:"Trombectomía mecánica si ASPECTS > 3. Trombólisis EV si síntomas > 9h."
   },
 
-  'tiempo desde inicio de síntomas2': {
-    id: 'tiempo desde inicio de síntomas2',
-    title: 'Tiempo desde inicio de síntomas',
-    body: 'ACV del despertar o menos de 24 h',
-    options: [
-      { label: 'Sí', nextId: 'NIHS2' },
-      { label: 'No', nextId: 'No es candidato a reperfusión' },
-    ],
+  tromb1:{title:"Reperfusión",
+    result:"Trombolisis EV (<5h) + considerar trombectomía si fluctuante/deterioro."
+  },
+  tromb2:{title:"Reperfusión",
+    result:"Trombolisis EV (<5h) + trombectomía si déficit invalidante."
+  },
+  tromb3:{title:"Reperfusión",
+    result:"Trombolisis EV (<5h) + trombectomía mecánica."
   },
 
-'NIHS2': {
-    id: 'NIHS2',
-    title: 'Calcular NIHS',
-    body:
-      '',
-    options: [
-      { label: 'NIH <6', nextId: 'tromb1' }, // placeholder
-      { label: 'NIH 6-9', nextId: 'tromb2' },
-      { label: 'NIH >10', nextId: 'tromb3' },
-    ],
-  },
+  // Ramas adicionales:
+  t3:{title:"Tiempo inicio", options:[
+    {label:"<6h", next:"tr4"},
+    {label:">6h", next:"tr5"},
+    {label:"Wake up <24h", next:"tr6"},
+  ]},
 
-  'No es candidato a reperfusión': {
-    id: 'No es candidato a reperfusión',
-    title: 'No es candidato a reperfusión',
-    result: 'No es candidato a reperfusión',
-  },
+  tr4:{title:"Reperfusión", result:"Trombolisis EV"},
 
-  'final1': {
-    id: 'final1',
-    title: 'Reperfusión',
-    result:
-      'Trombectomía mecánica si ASPECTS > 3. Trombólisis EV además si síntomas > 9 h (según criterios locales).',
-  },
+  tr5:{title:"Síntomas >6h", options:[
+    {label:"<9h", next:"perf2"},
+    {label:">9h", next:"no"},
+  ]},
 
-    'tromb1': {
-    id: 'tromb1',
-    title: 'Reperfusión',
-     result:
-      'Trombolisis EV (si <5h) + trombectomia si sintomas fluctuantes o deterioro temprano',
-  },
-      'tromb2': {
-    id: 'tromb2',
-    title: 'Reperfusión',
-    result:
-      'Trombolisis EV (si <5h) + trombectomía si déficit invalidante o mala colateralidad pC_SC <6' ,
-  },
-      'tromb3': {
-    id: 'tromb3',
-    title: 'Reperfusión',
-    result:
-      'Trombolisis EV (si <5h) + trombecotmia mecánica',
-  },
+  tr6:{title:"Tiempo incierto", options:[
+    {label:"NIHS ≤4", next:"flair"},
+    {label:"NIHS >4", next:"perf2"},
+  ]},
 
-  'NIHS6': {
-    id: 'NIHS6',
-    title: 'Valor NIH',
-    body: '',
-    options: [
-      { label: 'NIHS 6 o mas', nextId: 'NIHS6_1' },
-      { label: 'NIHS < 6', nextId: 'NIHS6_2' },                    
-    ],
-  },
+  flair:{title:"FLAIR (RM)", options:[
+    {label:"Muestra infarto", next:"no"},
+    {label:"No muestra", next:"tr4"},
+  ]},
 
-    'NIHS6_1': {
-    id: 'NIHS6_1',
-    title: 'NIHS 6 o más',
-    result:
-      'Trombolisis EV (si <5h) + trombecotmia mecánica(ASPECT >3)',
-  },
-
-    'NIHS6_2': {
-    id: 'NIHS6_2',
-    title: 'NIH < 6 horas',
-    result:
-      'Trombolisis EV (si <5h) + trombecotmia mecánicaTrombolisis EV (si <5hrs) + trombectomia mecanica si sintoma fluctuante o deficit invalidante',
-  },
-
-  'tiempo desde inicio de síntomas3': {
-    id: 'tiempo desde inicio de síntomas3',
-    title: 'Tiempo de inicio de los síntomas',
-    options: [
-      { label: 'Síntomas < 6 h', nextId: 'tromb4' },    // placeholder
-      { label: 'Síntomas > 6 h', nextId: 'tromb5' },    // placeholder
-      { label: 'ACV del despertar o inicio incierto menor a 24h', nextId: 'tromb6' }, // placeholder
-    ],
-  },
-
-  'tromb4': {
-    id: 'tromb4',
-    title: 'Reperfusión',
-    result: 'Trombolisis EV ',
-    },
-
-
-
-  'tromb5': {
-    id: 'tromb5',
-    title: 'Tiempo de inicio de los síntomas',
-    options: [
-      { label: 'Síntomas < 9 h', nextId: 'perfusion2' },    // placeholder
-      { label: 'Síntomas > 9 h', nextId: 'No es candidato a reperfusión' },    // placeholder
-      
-    ],
-  },
-
-  'tromb6': {
-    id: 'tromb6',
-    title: 'Tiempo de inicio de los síntomas',
-    options: [
-      { label: 'Síntomas < 9 h', nextId: 'nihs4' },    // placeholder
-      { label: 'Síntomas > 9 h', nextId: 'FLAIR' },    // placeholder
-      
-    ],
-  },
-
-  'nihs4': {
-    id: 'nihs4',
-    title: 'calcular NIHS',
-    options: [
-      { label: 'NIHS <= 4', nextId: 'FLAIR' },    // placeholder
-      { label: 'NIHS > 4', nextId: 'perfusion2' },    // placeholder
-      
-    ],
-  },
-
-  'FLAIR': {
-    id: 'FLAIR',
-    title: 'RM FLAIR',
-    options: [
-      { label: 'FLAIR muestra infarto', nextId: 'No es candidato a reperfusión' },    // placeholder
-      { label: 'FLAIR no muestra infarto', nextId: 'tromb4' },    // placeholder
-      
-    ],
-  },
-
-  'perfusión2': {
-    id: 'perfusión2',
-    title: 'Perfusión',
-    body:
-      'Perfusión (+): CBF <30%, mismatch absoluto >10 ml (IVT) / >15 ml (EVT); mismatch relativo >1,2 (IVT) / >1,8 (EVT).',
-    options: [
-      { label: '(+)', nextId: 'tromb4' }, // placeholder
-      { label: '(-)', nextId: 'No es candidato a reperfusión' },
-    ],
-  },
-
-  // PLACEHOLDERS para evitar pantallas en blanco
-  lkw: {
-    id: 'lkw',
-    title: 'LKW / Ventana',
-    result: 'Nodo temporal (placeholder): define aquí el flujo real para ventana / LKW.',
-  },
-  'no-deficit': {
-    id: 'no-deficit',
-    title: 'Sin déficit focal claro',
-    result: 'Nodo temporal (placeholder): completa esta rama o redirígela donde corresponda.',
-  },
+  perf2:{title:"Perfusión", options:[
+    {label:"(+)", next:"tr4"},
+    {label:"(-)", next:"no"},
+  ]},
 };
 
-};
+// ===================== LÓGICA =====================
+let current = "inicio";
+let history = [];
 
-// <-- Cambia esto por el id real con el que quieres iniciar -->
-const START_ID = "inicio";
+function render(){
+  const node = ARBOL[current];
+  const app = document.getElementById("app");
+  app.innerHTML = "";
 
-// ========== Motor mínimo del árbol ==========
+  // Header
+  const backBtn = document.createElement("button");
+  backBtn.className="header";
+  backBtn.textContent="Atrás";
+  backBtn.disabled = history.length===0;
+  backBtn.onclick=()=>{ current = history.pop(); render(); };
 
-const state = {
-  currentId: null,
-  history: []
-};
+  const resetBtn = document.createElement("button");
+  resetBtn.className="header";
+  resetBtn.textContent="Reiniciar";
+  resetBtn.onclick=()=>{ current="inicio"; history=[]; render(); };
 
-const byId = id => TREE[id];
+  app.append(resetBtn, backBtn);
 
-function isFinal(node){
-  return !!node.result;
-}
+  // Título y texto
+  app.insertAdjacentHTML("beforeend", `<h1>${node.title}</h1>`);
+  if(node.body) app.insertAdjacentHTML("beforeend", `<p>${node.body}</p>`);
 
-function go(id, pushHistory=true){
-  const node = byId(id);
-  if(!node){ renderError("Nodo no encontrado: " + id); return; }
-
-  if(pushHistory && state.currentId) state.history.push(state.currentId);
-  state.currentId = id;
-
-  render(node);
-  // URL amigable: permite compartir el paso actual
-  location.hash = encodeURIComponent(id);
-}
-
-function back(){
-  const prev = state.history.pop();
-  if(prev){ go(prev, false); }
-}
-
-function renderError(msg){
-  const card = document.getElementById('card');
-  card.hidden = false;
-  document.getElementById('nodeTitle').textContent = "Error";
-  document.getElementById('nodeBody').textContent = msg;
-  document.getElementById('options').innerHTML = "";
-  document.getElementById('footer').innerHTML = "";
-}
-
-function render(node){
-  const card = document.getElementById('card');
-  card.hidden = false;
-
-  const t = document.getElementById('nodeTitle');
-  const b = document.getElementById('nodeBody');
-  const opts = document.getElementById('options');
-  const foot = document.getElementById('footer');
-
-  t.textContent = node.title || node.id;
-  b.textContent = node.body || "";
-
-  opts.innerHTML = "";
-  foot.innerHTML = "";
-
-  if(isFinal(node)){
-    // Vista final
-    b.textContent = node.result;
-    const again = document.createElement('button');
-    again.className = 'btn';
-    again.textContent = 'Volver al inicio';
-    again.onclick = () => { state.history = []; go(START_ID, false); };
-    opts.appendChild(again);
-
-  } else {
-    // Botones de opciones
-    (node.options || []).forEach(o=>{
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.textContent = o.label;
-      btn.onclick = () => go(o.nextId);
-      opts.appendChild(btn);
-    });
-
-    // Pie: id y botón atrás
-    const idChip = document.createElement('div');
-    idChip.className = 'chip';
-    idChip.textContent = `id: ${node.id}`;
-    foot.appendChild(idChip);
-
-    if(state.history.length){
-      const backBtn = document.createElement('button');
-      backBtn.className = 'btn';
-      backBtn.style.padding = '8px 10px';
-      backBtn.textContent = '← Atrás';
-      backBtn.onclick = back;
-      foot.appendChild(backBtn);
-    }
+  // Resultado final
+  if(node.result){
+    app.insertAdjacentHTML("beforeend", `<div class="result"><p>${node.result}</p></div>`);
+    return;
   }
+
+  // Botones de opciones
+  node.options.forEach(opt=>{
+    const b = document.createElement("button");
+    b.textContent = opt.label;
+    b.onclick = ()=>{
+      history.push(current);
+      current = opt.next;
+      render();
+    };
+    app.appendChild(b);
+  });
 }
 
-// Soporte para URLs compartibles: https://.../index.html#id-del-nodo
-window.addEventListener('hashchange', ()=>{
-  const h = decodeURIComponent(location.hash.replace(/^#/, ''));
-  if(h && TREE[h]){ state.history = []; go(h, false); }
-});
-
-document.getElementById('reset').addEventListener('click', e=>{
-  e.preventDefault();
-  state.history = [];
-  location.hash = '';
-  go(START_ID, false);
-});
-
-// Arranque
-(() => {
-  const h = decodeURIComponent(location.hash.replace(/^#/, ''));
-  if(h && TREE[h]) go(h, false);
-  else go(START_ID, false);
-})();
+render();
 </script>
 </body>
 </html>
